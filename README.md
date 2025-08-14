@@ -1,15 +1,16 @@
 # DeepSeek Web Chat 客户端
 
-一个使用Python和Selenium自动化登录DeepSeek并进行web chat对话的演示项目。
+一个使用Python和Selenium实现DeepSeek自动化登录和对话的轻量级客户端。
 
-## 功能特性
+## 🚀 功能特性
 
-- 🤖 自动登录DeepSeek chat
-- 💬 发送消息并获取AI响应
-- 📝 获取对话历史
-- 🆕 开始新对话
-- 📸 截图保存
-- 🎮 交互式和批量测试模式
+- 🤖 **自动化登录** - 无需人工干预的登录流程
+- 🔄 **智能模式切换** - 自动切换到密码登录模式  
+- 🛡️ **Cloudflare处理** - 自动处理安全验证
+- 💬 **消息发送** - 发送消息并获取AI响应
+- 📝 **对话管理** - 获取对话历史和开始新对话
+- 📸 **截图功能** - 支持页面截图保存
+- 🛠️ **简洁设计** - 轻量级模块化架构
 
 ## 环境要求
 
@@ -17,37 +18,44 @@
 - Chrome浏览器
 - DeepSeek账号
 
-## 安装步骤
+## 🔧 快速开始
 
-1. 克隆项目
+### 1. 环境准备
 ```bash
+# 克隆项目
 git clone <项目地址>
-cd deepseek_client
-```
+cd deepseekclient
 
-2. 安装依赖
-```bash
+# 激活虚拟环境
+source venv/bin/activate
+
+# 安装依赖
 pip install -r requirements.txt
 ```
 
-3. 配置环境变量
-```bash
-cp .env.example .env
-# 编辑.env文件，填入你的DeepSeek登录凭据
+### 2. 配置登录凭据
+创建 `.env` 文件并填入DeepSeek登录信息：
+```env
+DEEPSEEK_EMAIL=your_email@example.com
+DEEPSEEK_PASSWORD=your_password
 ```
 
-## 使用方法
-
-### 方式一：运行演示程序
+### 3. 运行示例
 ```bash
-python demo.py
+# 运行主程序示例
+python -c "
+from src.deepseek_client import DeepSeekWebClient
+client = DeepSeekWebClient(headless=False)
+if client.login():
+    response = client.send_message('你好')
+    print(f'AI回复: {response}')
+    client.close()
+"
 ```
 
-程序会提供两种模式：
-- 交互式对话演示：可以实时与DeepSeek对话
-- 批量测试演示：自动测试预设的问题
+## 📚 使用方法
 
-### 方式二：直接使用客户端类
+### 直接使用客户端类
 ```python
 from src.deepseek_client import DeepSeekWebClient
 
@@ -55,7 +63,7 @@ from src.deepseek_client import DeepSeekWebClient
 client = DeepSeekWebClient(headless=False)
 
 # 登录
-if client.login("your_email@example.com", "your_password"):
+if client.login():  # 自动从.env读取凭据
     # 发送消息
     response = client.send_message("你好")
     print(f"AI回复: {response}")
@@ -126,17 +134,52 @@ client = DeepSeekWebClient(headless=True, timeout=30)
    - 增加timeout参数值
    - 检查网络连接
 
-## 开发说明
+## 📁 项目结构
 
-项目结构：
 ```
-deepseek_client/
+deepseekclient/
 ├── src/
-│   └── deepseek_client.py    # 主要客户端类
-├── demo.py                   # 演示程序
-├── requirements.txt          # 依赖包
-├── .env.example             # 环境变量示例
-└── README.md                # 说明文档
+│   └── deepseek_client.py    # 核心客户端类
+├── requirements.txt          # 依赖包列表
+├── .env                     # 环境变量配置（需要创建）
+└── README.md                # 项目说明文档
+```
+
+## 🎯 核心功能
+
+### DeepSeekWebClient 类
+
+这是项目的核心类，提供完整的DeepSeek自动化操作功能：
+
+#### 主要特性
+- ✅ **自动登录**: 支持邮箱密码登录，自动处理页面元素识别
+- ✅ **智能重试**: 登录失败时自动重试机制
+- ✅ **消息交互**: 发送消息并获取AI回复
+- ✅ **会话管理**: 支持新建对话和获取历史记录
+- ✅ **截图功能**: 支持页面截图保存
+- ✅ **错误处理**: 完善的异常处理和日志记录
+
+#### 使用示例
+```python
+from src.deepseek_client import DeepSeekWebClient
+
+# 创建客户端
+client = DeepSeekWebClient(headless=False, timeout=30)
+
+# 登录并使用
+if client.login():
+    # 发送消息
+    response = client.send_message("请介绍一下你自己")
+    print(f"AI回复: {response}")
+    
+    # 截图
+    client.take_screenshot("chat_screenshot.png")
+    
+    # 开始新对话
+    client.start_new_chat()
+    
+    # 关闭浏览器
+    client.close()
 ```
 
 ## 许可证

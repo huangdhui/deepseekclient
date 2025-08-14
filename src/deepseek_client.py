@@ -236,21 +236,33 @@ class DeepSeekWebClient:
             message_input.send_keys(message)
             
             # 查找并点击发送按钮
-            send_selectors = [
+            send_button = None
+            
+            # 先尝试常见的按钮选择器
+            simple_selectors = [
                 "button[type='submit']",
-                "button:contains('发送')",
-                "button:contains('Send')",
                 ".send-button",
                 "[data-testid='send-button']"
             ]
             
-            send_button = None
-            for selector in send_selectors:
+            for selector in simple_selectors:
                 try:
                     send_button = self.driver.find_element(By.CSS_SELECTOR, selector)
                     break
                 except NoSuchElementException:
                     continue
+            
+            # 如果没找到，尝试查找包含特定文本的按钮
+            if not send_button:
+                try:
+                    buttons = self.driver.find_elements(By.CSS_SELECTOR, "button")
+                    for button in buttons:
+                        button_text = button.text.strip().lower()
+                        if button_text in ['发送', 'send', '提交']:
+                            send_button = button
+                            break
+                except:
+                    pass
             
             if send_button:
                 send_button.click()
