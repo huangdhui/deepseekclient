@@ -139,7 +139,11 @@ client = DeepSeekWebClient(headless=True, timeout=30)
 ```
 deepseekclient/
 ├── src/
-│   └── deepseek_client.py    # 核心客户端类
+│   ├── deepseek_client.py    # 核心客户端类
+│   └── logger_config.py      # 日志配置模块
+├── logs/                     # 日志和截图目录（自动创建）
+│   ├── deepseek_client_YYYYMMDD.log  # 统一日志文件
+│   └── *.png                # 截图文件
 ├── requirements.txt          # 依赖包列表
 ├── .env                     # 环境变量配置（需要创建）
 └── README.md                # 项目说明文档
@@ -156,7 +160,8 @@ deepseekclient/
 - ✅ **智能重试**: 登录失败时自动重试机制
 - ✅ **消息交互**: 发送消息并获取AI回复
 - ✅ **会话管理**: 支持新建对话和获取历史记录
-- ✅ **截图功能**: 支持页面截图保存
+- ✅ **截图功能**: 支持页面截图保存到logs目录
+- ✅ **统一日志**: 所有操作日志统一输出到控制台和文件
 - ✅ **错误处理**: 完善的异常处理和日志记录
 
 #### 使用示例
@@ -181,6 +186,22 @@ if client.login():
     # 关闭浏览器
     client.close()
 ```
+
+## 📝 日志系统
+
+### 日志特性
+- **控制台输出**: 实时显示操作状态和结果
+- **文件记录**: 所有日志保存到 `logs/deepseek_client_YYYYMMDD.log`
+- **统一管理**: INFO、WARNING、ERROR级别日志统一记录
+- **时间戳**: 每条日志包含详细的时间信息
+- **中文支持**: 完全支持中文日志内容
+
+### 日志位置
+- **日志文件**: `logs/deepseek_client_20250814.log`
+- **截图文件**: `logs/*.png`
+- **自动创建**: logs目录在首次使用时自动创建
+
+
 
 ## 许可证
 
