@@ -201,6 +201,50 @@ class DeepSeekWebClient:
             logger.error(f"登录过程中出现错误: {e}")
             return False
     
+    def select_feature_buttons(self):
+        """选中功能按钮：深度思考(R1)和联网搜索"""
+        try:
+            logger.info("正在选中功能按钮...")
+            
+            # 查找所有按钮
+            buttons = self.driver.find_elements(By.CSS_SELECTOR, "div[role='button']")
+            
+            for button in buttons:
+                try:
+                    button_text = button.text.strip()
+                    
+                    # 选中"深度思考 (R1)"按钮
+                    if "深度思考" in button_text and "R1" in button_text:
+                        # 检查按钮是否已经被选中
+                        is_selected = "selected" in button.get_attribute("class") or "active" in button.get_attribute("class")
+                        if not is_selected:
+                            button.click()
+                            logger.info("✅ 已选中'深度思考 (R1)'按钮")
+                            time.sleep(1)
+                        else:
+                            logger.info("ℹ️ '深度思考 (R1)'按钮已经是选中状态")
+                    
+                    # 选中"联网搜索"按钮
+                    elif "联网搜索" in button_text:
+                        # 检查按钮是否已经被选中
+                        is_selected = "selected" in button.get_attribute("class") or "active" in button.get_attribute("class")
+                        if not is_selected:
+                            button.click()
+                            logger.info("✅ 已选中'联网搜索'按钮")
+                            time.sleep(1)
+                        else:
+                            logger.info("ℹ️ '联网搜索'按钮已经是选中状态")
+                            
+                except Exception as e:
+                    logger.debug(f"处理按钮时出错: {e}")
+                    continue
+            
+            logger.info("功能按钮选择完成")
+            
+        except Exception as e:
+            logger.warning(f"选择功能按钮时出现错误: {e}")
+            # 不抛出异常，继续执行
+    
     def send_message(self, message):
         """发送消息到DeepSeek chat"""
         if not self.driver:
@@ -232,6 +276,9 @@ class DeepSeekWebClient:
                 logger.error("未找到消息输入框")
                 return None
                 
+            # 在发送消息前选中功能按钮
+            self.select_feature_buttons()
+            
             # 清空并输入消息
             message_input.clear()
             message_input.send_keys(message)
