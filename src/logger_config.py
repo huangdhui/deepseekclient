@@ -37,7 +37,7 @@ class LoggerConfig:
         
         # 创建格式化器（包含行号信息）
         formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(name)s%:(filename)s:%(lineno)d - %(message)s',
+            '%(asctime)s - %(levelname)s - %(name)s:%(filename)s:%(lineno)d - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         

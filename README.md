@@ -158,8 +158,10 @@ deepseekclient/
 #### 主要特性
 - ✅ **自动登录**: 支持邮箱密码登录，自动处理页面元素识别
 - ✅ **智能重试**: 登录失败时自动重试机制
-- ✅ **消息交互**: 发送消息并获取AI回复
+- ✅ **流式响应**: 正确处理DeepSeek的流式回复，等待响应完整生成
+- ✅ **消息交互**: 发送消息并获取完整的AI回复内容
 - ✅ **会话管理**: 支持新建对话和获取历史记录
+- ✅ **元素调试**: 内置页面元素调试功能，便于问题排查
 - ✅ **截图功能**: 支持页面截图保存到logs目录
 - ✅ **统一日志**: 所有操作日志统一输出到控制台和文件
 - ✅ **错误处理**: 完善的异常处理和日志记录
@@ -173,9 +175,12 @@ client = DeepSeekWebClient(headless=False, timeout=30)
 
 # 登录并使用
 if client.login():
-    # 发送消息
+    # 发送消息（自动处理流式响应）
     response = client.send_message("请介绍一下你自己")
     print(f"AI回复: {response}")
+    
+    # 如果响应有问题，可以调试页面元素
+    # client.debug_page_elements()
     
     # 截图
     client.take_screenshot("chat_screenshot.png")

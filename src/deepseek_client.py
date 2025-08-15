@@ -282,41 +282,145 @@ class DeepSeekWebClient:
             logger.error(f"发送消息时出现错误: {e}")
             return None
     
-    def wait_for_response(self, timeout=60):
-        """等待AI响应"""
-        logger.info("等待AI响应...")
+    def wait_for_response(self, timeout=120):
+        """等待AI流式响应完成"""
+        logger.info("等待AI流式响应...")
         start_time = time.time()
+        last_content = ""
+        stable_count = 0
+        
+        # 更精确的响应消息选择器
+        response_selectors = [
+            # DeepSeek实际使用的选择器
+            ".ds-markdown-paragraph",
+            "p.ds-markdown-paragraph",
+            "[class*='markdown']",
+            # DeepSeek常用的消息容器
+            "[data-testid*='message']",
+            ".message-content",
+            ".chat-message",
+            ".response-message",
+            ".ai-message",
+            # 通用的消息选择器
+            "[role='assistant']",
+            ".markdown-body",
+            "pre code",
+            # 备用选择器
+            "div[class*='message']",
+            "div[class*='response']"
+        ]
         
         while time.time() - start_time < timeout:
             try:
-                # 查找响应消息
-                response_selectors = [
-                    ".message-content",
-                    ".chat-message", 
-                    "[data-testid='message']",
-                    ".response-text",
-                    ".ai-message"
-                ]
+                current_content = None
                 
+                # 按优先级尝试不同的选择器
                 for selector in response_selectors:
                     try:
-                        messages = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                        if messages:
-                            last_message = messages[-1].text.strip()
-                            if last_message and not any(keyword in last_message.lower() for keyword in ['正在思考', 'thinking', 'typing', '...']):
-                                logger.info("收到AI响应")
-                                return last_message
-                    except:
-                        continue
+                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                         
+                        if elements:
+                            # 获取最后一个消息元素
+                            for element in reversed(elements):
+                                text = element.text.strip()
+                                
+                                # 跳过空内容和用户消息
+                                if not text:
+                                    continue
+                                
+                                # 跳过状态提示
+                                if any(keyword in text.lower() for keyword in [
+                                    '正在思考', 'thinking', 'typing', '...', 
+                                    '正在生成', 'generating', '请稍等'
+                                ]):
+                                    continue
+                                
+                                # 跳过明显的用户输入
+                                if text.startswith(('我', '你', '请', '帮', '如何', '什么')):
+                                    continue
+                                
+                                current_content = text
+                                break
+                        
+                        if current_content:
+                            break
+                            
+                    except Exception as e:
+                        logger.debug(f"选择器 {selector} 查找失败: {e}")
+                        continue
+                
+                # 检查内容是否有变化（流式更新）
+                if current_content:
+                    if current_content == last_content:
+                        stable_count += 1
+                        # 内容稳定3次认为流式响应完成
+                        if stable_count >= 3:
+                            logger.info("AI流式响应完成")
+                            return current_content
+                    else:
+                        # 内容有更新，重置稳定计数
+                        stable_count = 0
+                        last_content = current_content
+                        logger.debug(f"接收到流式内容更新: {len(current_content)} 字符")
+                
                 time.sleep(1)
                 
             except Exception as e:
                 logger.error(f"等待响应时出现错误: {e}")
                 break
         
-        logger.warning("等待响应超时")
+        # 超时但有内容则返回最后的内容
+        if last_content:
+            logger.warning(f"响应超时，返回已接收内容: {len(last_content)} 字符")
+            return last_content
+        
+        logger.warning("等待响应超时且未收到内容")
         return None
+    
+    def debug_page_elements(self):
+        """调试页面元素，帮助识别正确的选择器"""
+        logger.info("开始调试页面元素...")
+        
+        try:
+            # 查找所有可能的消息容器
+            all_elements = self.driver.find_elements(By.CSS_SELECTOR, "*")
+            
+            message_candidates = []
+            for element in all_elements:
+                try:
+                    tag_name = element.tag_name
+                    class_name = element.get_attribute('class') or ''
+                    data_testid = element.get_attribute('data-testid') or ''
+                    role = element.get_attribute('role') or ''
+                    text = element.text.strip()
+                    
+                    # 查找可能的消息元素
+                    if (any(keyword in class_name.lower() for keyword in ['message', 'chat', 'response']) or
+                        any(keyword in data_testid.lower() for keyword in ['message', 'chat', 'response']) or
+                        role in ['assistant', 'user'] or
+                        (len(text) > 10 and len(text) < 2000)):  # 合理的文本长度
+                        
+                        message_candidates.append({
+                            'tag': tag_name,
+                            'class': class_name,
+                            'testid': data_testid,
+                            'role': role,
+                            'text_length': len(text),
+                            'text_preview': text[:100] + '...' if len(text) > 100 else text
+                        })
+                except:
+                    continue
+            
+            logger.info(f"找到 {len(message_candidates)} 个可能的消息元素:")
+            for i, candidate in enumerate(message_candidates[:10]):  # 只显示前10个
+                logger.info(f"  {i+1}. <{candidate['tag']}> class='{candidate['class']}' "
+                           f"testid='{candidate['testid']}' role='{candidate['role']}' "
+                           f"text_len={candidate['text_length']}")
+                if candidate['text_preview']:
+                    logger.info(f"     text: {candidate['text_preview']}")
+                    
+        except Exception as e:
+            logger.error(f"调试页面元素时出错: {e}")
     
     def get_conversation_history(self):
         """获取对话历史"""
