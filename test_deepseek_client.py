@@ -23,8 +23,6 @@ def test_streaming_response():
             # 等待页面稳定
             time.sleep(5)
             
-            print("🔍 调试页面元素...")
-            client.debug_page_elements()
             
             print("💬 发送测试消息...")
             test_message = "请简单介绍一下你自己，大概100字左右"

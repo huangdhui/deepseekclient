@@ -68,7 +68,7 @@ class DeepSeekWebClient:
         try:
             logger.info("正在访问DeepSeek登录页面...")
             self.driver.get("https://chat.deepseek.com/sign_in")
-            time.sleep(3)
+            time.sleep(2)
             
             # 查找并点击"密码登录"切换
             logger.info("正在切换到密码登录模式...")
@@ -117,7 +117,7 @@ class DeepSeekWebClient:
             logger.info("邮箱输入完成")
             
             # 等待页面响应
-            time.sleep(2)
+            time.sleep(1)
             
             # 重新查找密码输入框（页面可能有变化）
             try:
@@ -141,7 +141,7 @@ class DeepSeekWebClient:
                 raise e
             
             # 等待页面完全加载
-            time.sleep(2)
+            time.sleep(1)
             
             # 查找登录按钮
             login_button = None
@@ -183,7 +183,7 @@ class DeepSeekWebClient:
                     self.driver.execute_script("arguments[0].click();", login_button)
             
             # 等待页面跳转
-            time.sleep(3)
+            time.sleep(1)
             
             # 检查是否登录成功
             current_url = self.driver.current_url
@@ -335,8 +335,16 @@ class DeepSeekWebClient:
                                 ]):
                                     continue
                                 
-                                # 跳过明显的用户输入
-                                if text.startswith(('我', '你', '请', '帮', '如何', '什么')):
+                                # 跳过明显的用户输入（但保留AI的问候语）
+                                if text.startswith(('我', '请', '帮', '如何', '什么')):
+                                    continue
+                                
+                                # 检查是否是AI的问候语（以"你"开头但包含表情符号或问候语）
+                                if text.startswith('你') and any(char in text for char in ['😊', '！', '？', '你好', '很高兴', '见到你']):
+                                    # 这是AI的问候语，不跳过
+                                    pass
+                                elif text.startswith('你'):
+                                    # 其他以"你"开头的内容可能是用户输入，跳过
                                     continue
                                 
                                 current_content = text
@@ -377,69 +385,69 @@ class DeepSeekWebClient:
         logger.warning("等待响应超时且未收到内容")
         return None
     
-    def debug_page_elements(self):
-        """调试页面元素，帮助识别正确的选择器"""
-        logger.info("开始调试页面元素...")
+    # def debug_page_elements(self):
+    #     """调试页面元素，帮助识别正确的选择器"""
+    #     logger.info("开始调试页面元素...")
         
-        try:
-            # 查找所有可能的消息容器
-            all_elements = self.driver.find_elements(By.CSS_SELECTOR, "*")
+    #     try:
+    #         # 查找所有可能的消息容器
+    #         all_elements = self.driver.find_elements(By.CSS_SELECTOR, "*")
             
-            message_candidates = []
-            for element in all_elements:
-                try:
-                    tag_name = element.tag_name
-                    class_name = element.get_attribute('class') or ''
-                    data_testid = element.get_attribute('data-testid') or ''
-                    role = element.get_attribute('role') or ''
-                    text = element.text.strip()
+    #         message_candidates = []
+    #         for element in all_elements:
+    #             try:
+    #                 tag_name = element.tag_name
+    #                 class_name = element.get_attribute('class') or ''
+    #                 data_testid = element.get_attribute('data-testid') or ''
+    #                 role = element.get_attribute('role') or ''
+    #                 text = element.text.strip()
                     
-                    # 查找可能的消息元素
-                    if (any(keyword in class_name.lower() for keyword in ['message', 'chat', 'response']) or
-                        any(keyword in data_testid.lower() for keyword in ['message', 'chat', 'response']) or
-                        role in ['assistant', 'user'] or
-                        (len(text) > 10 and len(text) < 2000)):  # 合理的文本长度
+    #                 # 查找可能的消息元素
+    #                 if (any(keyword in class_name.lower() for keyword in ['message', 'chat', 'response']) or
+    #                     any(keyword in data_testid.lower() for keyword in ['message', 'chat', 'response']) or
+    #                     role in ['assistant', 'user'] or
+    #                     (len(text) > 10 and len(text) < 2000)):  # 合理的文本长度
                         
-                        message_candidates.append({
-                            'tag': tag_name,
-                            'class': class_name,
-                            'testid': data_testid,
-                            'role': role,
-                            'text_length': len(text),
-                            'text_preview': text[:100] + '...' if len(text) > 100 else text
-                        })
-                except:
-                    continue
+    #                     message_candidates.append({
+    #                         'tag': tag_name,
+    #                         'class': class_name,
+    #                         'testid': data_testid,
+    #                         'role': role,
+    #                         'text_length': len(text),
+    #                         'text_preview': text[:100] + '...' if len(text) > 100 else text
+    #                     })
+    #             except:
+    #                 continue
             
-            logger.info(f"找到 {len(message_candidates)} 个可能的消息元素:")
-            for i, candidate in enumerate(message_candidates[:10]):  # 只显示前10个
-                logger.info(f"  {i+1}. <{candidate['tag']}> class='{candidate['class']}' "
-                           f"testid='{candidate['testid']}' role='{candidate['role']}' "
-                           f"text_len={candidate['text_length']}")
-                if candidate['text_preview']:
-                    logger.info(f"     text: {candidate['text_preview']}")
+    #         logger.info(f"找到 {len(message_candidates)} 个可能的消息元素:")
+    #         for i, candidate in enumerate(message_candidates[:10]):  # 只显示前10个
+    #             logger.info(f"  {i+1}. <{candidate['tag']}> class='{candidate['class']}' "
+    #                        f"testid='{candidate['testid']}' role='{candidate['role']}' "
+    #                        f"text_len={candidate['text_length']}")
+    #             if candidate['text_preview']:
+    #                 logger.info(f"     text: {candidate['text_preview']}")
                     
-        except Exception as e:
-            logger.error(f"调试页面元素时出错: {e}")
+    #     except Exception as e:
+    #         logger.error(f"调试页面元素时出错: {e}")
     
-    def get_conversation_history(self):
-        """获取对话历史"""
-        try:
-            messages = []
-            message_elements = self.driver.find_elements(By.CSS_SELECTOR, ".message, .chat-message, [data-testid='message']")
+    # def get_conversation_history(self):
+    #     """获取对话历史"""
+    #     try:
+    #         messages = []
+    #         message_elements = self.driver.find_elements(By.CSS_SELECTOR, ".message, .chat-message, [data-testid='message']")
             
-            for element in message_elements:
-                content = element.text.strip()
-                if content:
-                    messages.append({
-                        'content': content,
-                        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-                    })
+    #         for element in message_elements:
+    #             content = element.text.strip()
+    #             if content:
+    #                 messages.append({
+    #                     'content': content,
+    #                     'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+    #                 })
             
-            return messages
-        except Exception as e:
-            logger.error(f"获取对话历史时出现错误: {e}")
-            return []
+    #         return messages
+    #     except Exception as e:
+    #         logger.error(f"获取对话历史时出现错误: {e}")
+    #         return []
     
     def start_new_chat(self):
         """开始新对话"""
