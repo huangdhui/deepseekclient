@@ -19,20 +19,18 @@ def test_streaming_response():
         print("🔐 正在登录...")
         if client.login():
             print("✅ 登录成功")
-            
             # 等待页面稳定
-            time.sleep(5)
-            
+            time.sleep(2)
             
             print("💬 发送测试消息...")
-            test_message = "请简单介绍一下你自己，大概100字左右"
+            test_message = "分析300122股票消息面"
             
             response = client.send_message(test_message)
             
             if response:
                 print(f"✅ 成功接收到流式响应:")
                 print(f"📝 响应长度: {len(response)} 字符")
-                print(f"📄 响应内容: {response[:200]}...")
+                print(f"📄 响应内容: {response[:1000]}...")
                 
                 # 截图保存结果
                 client.take_screenshot("streaming_response_test.png")

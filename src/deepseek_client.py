@@ -23,7 +23,16 @@ class DeepSeekWebClient:
         self.timeout = timeout
         self.driver = None
         self.wait = None
+        # 优化：初始化缓存
+        self._cached_message_input = None
+        self._cache_timestamp = 0
         
+    def clear_cache(self):
+        """清理元素缓存"""
+        self._cached_message_input = None
+        self._cache_timestamp = 0
+        logger.debug("已清理元素缓存")
+
     def init_driver(self):
         """初始化Chrome浏览器驱动"""
         try:
@@ -67,6 +76,8 @@ class DeepSeekWebClient:
             
         try:
             logger.info("正在访问DeepSeek登录页面...")
+            # 优化：页面导航时清理缓存
+            self.clear_cache()
             self.driver.get("https://chat.deepseek.com/sign_in")
             time.sleep(2)
             
@@ -254,28 +265,34 @@ class DeepSeekWebClient:
         try:
             logger.info(f"正在发送消息: {message}")
             
-            # 查找输入框
-            message_selectors = [
-                "textarea[placeholder*='输入']",
-                "textarea[placeholder*='message']", 
-                "input[type='text']",
-                "textarea",
-                ".input-area textarea",
-                "[contenteditable='true']"
-            ]
-            
-            message_input = None
-            for selector in message_selectors:
+            # 优化：使用缓存检查是否已有输入框
+            if hasattr(self, '_cached_message_input') and self._cached_message_input:
                 try:
-                    message_input = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
-                    break
-                except TimeoutException:
-                    continue
+                    # 验证缓存的元素是否仍然有效
+                    self._cached_message_input.is_displayed()
+                    message_input = self._cached_message_input
+                    logger.debug("使用缓存的输入框")
+                except:
+                    self._cached_message_input = None
             
-            if not message_input:
-                logger.error("未找到消息输入框")
-                return None
+            if not hasattr(self, '_cached_message_input') or not self._cached_message_input:
+                # 优化：使用DeepSeek页面的正确选择器
+                message_selectors = [
+                    "textarea#chat-input",  # 使用ID选择器，最精确
+                    "textarea[placeholder*='给 DeepSeek 发送消息']",  # 使用placeholder选择器
+                    "textarea"  # 备用通用选择器
+                ]
                 
+                # 优化：使用更短的超时时间和并行查找策略
+                message_input = self._find_message_input_optimized(message_selectors)
+                
+                if message_input:
+                    # 缓存找到的输入框
+                    self._cached_message_input = message_input
+                else:
+                    logger.error("未找到消息输入框")
+                    return None
+            
             # 在发送消息前选中功能按钮
             self.select_feature_buttons()
             
@@ -328,6 +345,71 @@ class DeepSeekWebClient:
         except Exception as e:
             logger.error(f"发送消息时出现错误: {e}")
             return None
+
+    def _find_message_input_optimized(self, selectors, max_timeout=10):
+        """
+        优化的消息输入框查找方法
+        使用更短的超时时间和更高效的查找策略
+        """
+        import threading
+        import queue
+        import time
+        
+        result_queue = queue.Queue()
+        start_time = time.time()
+        
+        def find_element_with_timeout(selector, timeout):
+            """在指定超时时间内查找元素"""
+            try:
+                # 优化：先尝试快速查找，再使用等待
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element.is_displayed() and element.is_enabled():
+                        result_queue.put((selector, element))
+                        return True
+                except NoSuchElementException:
+                    pass
+                
+                # 如果快速查找失败，使用等待
+                element = WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                )
+                result_queue.put((selector, element))
+                return True
+            except (TimeoutException, NoSuchElementException):
+                return False
+        
+        # 优化：使用递减的超时时间，优先选择器使用更长时间
+        threads = []
+        
+        for i, selector in enumerate(selectors):
+            # 根据优先级设置递减的超时时间
+            timeout = max(1, max_timeout - i * 0.5)  # 从max_timeout递减到1秒
+            
+            thread = threading.Thread(
+                target=find_element_with_timeout,
+                args=(selector, timeout)
+            )
+            thread.daemon = True
+            threads.append(thread)
+            thread.start()
+        
+        # 等待第一个成功的线程或所有线程完成
+        try:
+            # 等待第一个结果，最多等待max_timeout秒
+            selector, element = result_queue.get(timeout=max_timeout)
+            elapsed_time = time.time() - start_time
+            logger.debug(f"找到输入框，使用选择器: {selector}，耗时: {elapsed_time:.2f}秒")
+            return element
+        except queue.Empty:
+            elapsed_time = time.time() - start_time
+            logger.debug(f"所有选择器查找超时，总耗时: {elapsed_time:.2f}秒")
+            return None
+        finally:
+            # 确保所有线程都已启动
+            for thread in threads:
+                if thread.is_alive():
+                    thread.join(timeout=0.1)
     
     def wait_for_response(self, timeout=120):
         """等待AI流式响应完成"""
